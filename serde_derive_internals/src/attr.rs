@@ -644,6 +644,7 @@ pub struct Field {
     de_bound: Option<Vec<syn::WherePredicate>>,
     borrowed_lifetimes: BTreeSet<syn::Lifetime>,
     getter: Option<syn::Path>,
+    other_fields: bool,
 }
 
 /// Represents the default to use for a field when deserializing.
@@ -672,6 +673,7 @@ impl Field {
         let mut de_bound = Attr::none(cx, "bound");
         let mut borrowed_lifetimes = Attr::none(cx, "borrow");
         let mut getter = Attr::none(cx, "getter");
+        let mut other_fields = BoolAttr::none(cx, "other_fields");
 
         let ident = match field.ident {
             Some(ref ident) => ident.to_string(),
@@ -809,6 +811,11 @@ impl Field {
                         }
                     }
 
+                    // Parse `#[serde(other_fields)]`
+                    MetaItem(Word(ref name)) if name == "other_fields" => {
+                        other_fields.set_true();
+                    }
+
                     MetaItem(ref meta_item) => {
                         cx.error(format!("unknown serde field attribute `{}`", meta_item.name()),);
                     }
@@ -871,6 +878,7 @@ impl Field {
             de_bound: de_bound.get(),
             borrowed_lifetimes: borrowed_lifetimes,
             getter: getter.get(),
+            other_fields: other_fields.get(),
         }
     }
 
@@ -925,6 +933,12 @@ impl Field {
 
     pub fn getter(&self) -> Option<&syn::Path> {
         self.getter.as_ref()
+    }
+
+    /// Returns true if this field will collect all values which don't correspond to
+    /// named fields in the target struct.
+    pub fn other_fields(&self) -> bool {
+        self.other_fields
     }
 }
 
